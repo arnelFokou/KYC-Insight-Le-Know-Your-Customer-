@@ -16,13 +16,11 @@ st.markdown("""
     """, unsafe_allow_html=True)
 
 # 2. Chargement des données
-@st.cache_data
 def load_data():
     with open("datafiles/data_siret.json","r") as f:
         data = json.load(f)
     return data
 
-@st.cache_data
 def load_data_siren():
     with open("datafiles/data_siren.json","r") as f:
         global_data = json.load(f)
@@ -55,9 +53,9 @@ if not st.session_state['siret_valide']:
                 res = extract_data_siren(siret_input)
 
                 if res == 1:
-                    data = load_data()
+                    data_loaded = load_data()
                     st.session_state['siret_valide'] = True
-                    st.session_state['data_client'] = data
+                    st.session_state['data_client'] = data_loaded
                     st.rerun() # On relance pour afficher le dashboard
                 else:
                     st.error("❌ Ce SIRET n'existe pas dans notre base de données! Veuillez verifier a nouveau.")
@@ -66,10 +64,10 @@ if not st.session_state['siret_valide']:
 
 # --- VUE 2 : DASHBOARD (Si un SIRET est validé) ---
 else:
-    data = st.session_state['data_client']#['etablissement']
+    data_siret = st.session_state['data_client']
     
     # Barre latérale pour naviguer et bouton pour changer de client
-    st.sidebar.success(f"📍 Client : {data['uniteLegale']['denominationUniteLegale']}")
+    st.sidebar.success(f"📍 Client : {data_siret['uniteLegale']['denominationUniteLegale']}")
     menu = st.sidebar.radio("Navigation", ["🏢 L'Établissement", "🌍 L'Entreprise", "📜 Historique"])
     
     if st.sidebar.button("🔄 Analyser un autre SIRET"):
@@ -79,7 +77,7 @@ else:
     # Affichage des pages
     if menu == "🏢 L'Établissement":
         from vues import page_etablissement
-        page_etablissement.show(data)
+        page_etablissement.show(data_siret)
 
         
     elif menu == "🌍 L'Entreprise":
@@ -90,4 +88,4 @@ else:
     elif menu == "📜 Historique":
         st.title("Évolution de l'établissement")
         from vues import page_evolution
-        page_evolution.evolution(data['periodesEtablissement'])
+        page_evolution.evolution(data_siret['periodesEtablissement'])

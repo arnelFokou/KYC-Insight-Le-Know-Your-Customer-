@@ -5,6 +5,7 @@ import json
 
 
 def extract_data_siren(siret_number):
+    
     load_dotenv('.env.secrets')
     api_key=os.getenv('API_KEY')
     siret = siret_number
@@ -18,10 +19,9 @@ def extract_data_siren(siret_number):
 
     parametres = {
     'q': f'siren:{siren}',
-    'nombre': 1000  # Nombre maximum de résultats (par défaut 20)
+    'nombre': 1000  
 }
 
-    # Requests va transformer l'URL en : .../siret?q=denominationUniteLegale%3A%22AMAZON...
     response = requests.get(url, headers=headers,params=parametres)
 
     if response.status_code == 200:
