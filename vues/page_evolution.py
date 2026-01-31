@@ -54,8 +54,8 @@ def evolution(historique_list):
     # Inversion pour avoir le plus récent en haut (comme l'image qui monte vers le futur)
     for event in historique_list:
         # Extraction dynamique des données
-        date_fin = event.get('dateDebut')
-        date_debut = event.get('dateFin')
+        date_fin = event.get('dateFin') if event.get('dateFin') else "Aujourd'hui"
+        date_debut = event.get('dateDebut')
         annee = event.get('dateDebut', '????')[:4] if event.get('dateDebut') else "Inconnue"
         nom = event.get('enseigne1Etablissement') or "Enseigne non définie"
         activite = event.get('activitePrincipaleEtablissement') or "NAF non défini"
@@ -72,7 +72,7 @@ def evolution(historique_list):
             <div class="date-circle">{annee}</div>
             <div class="content-bubble">
                 <div class="title">{nom}</div>
-                <div class="subtitle"> {date_debut} - {"Maintenant" if not date_fin else date_fin} </div>
+                <div class="subtitle"> {date_debut} - {date_fin} </div>
                 <p style="margin: 5px 0 0 0; color: black;">Code NAF : {activite}({event['nomenclatureActivitePrincipaleEtablissement']}), {get_libelle_naf(activite) if get_libelle_naf(activite) else ''}</p>
                 <p style="margin: 5px 0 0 0; color: black;">Employees dans l'etablissement : {'yes' if employeurs=='O' else 'No'}</p>
             </div>

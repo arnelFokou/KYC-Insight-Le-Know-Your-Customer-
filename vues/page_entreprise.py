@@ -1,17 +1,34 @@
 import streamlit as st
 import pandas as pd
-import plotly.graph_objects as go
+import json
 import plotly.express as px
 from datetime import datetime
+from utils.get_libelle_naf import get_libelle_naf
+from pathlib import Path
+
+def get_adresse_siege(nic_siege):
+    BASE_DIR = Path(__file__).resolve().parent.parent
+    with open(BASE_DIR / "datafiles" / "data_siren.json","r") as f:
+        siege_siret = json.load(f)
+    
+    etablissements = siege_siret['etablissements']
+    for etab in etablissements:
+        if etab['nic'] == nic_siege:
+            adresse = etab['adresseEtablissement']
+    return adresse
 
 def show(data):
-    st.title("🏢 Profil de l'Entreprise")
-    st.markdown("### *Vue d'ensemble de l'unité légale*")
+    etab = data['etablissements'][0]
+    entreprise = etab['uniteLegale']
+    nic_siege = entreprise['nicSiegeUniteLegale']
+    adresse_siege = get_adresse_siege(nic_siege)
+
+    st.title(f"🏢 {entreprise['denominationUniteLegale']}")
+    st.markdown("### *Vue d'ensemble *")
     st.markdown("---")
     
     # Informations générales de l'entreprise (niveau SIREN)
-    etab = data['etablissements'][0]
-    entreprise = etab['uniteLegale']
+    
     # En-tête avec informations clés
     col1, col2, col3, col4 = st.columns(4)
     
@@ -50,15 +67,7 @@ def show(data):
     col1, col2 = st.columns([1, 1])
     
     with col1:
-        st.markdown("## 🏛️ Identité Juridique")
-        
-        st.markdown(f"""
-        <div class="metric-card">
-        <h3 style="color: #2563eb; margin-top: 0;">Dénomination</h3>
-        <h2 style="color: #1e3a8a; margin: 10px 0;">{entreprise['denominationUniteLegale']}</h2>
-        </div>
-        """, unsafe_allow_html=True)
-        
+       
         st.markdown("### 📝 Caractéristiques Juridiques")
         
         forme_juridique_map = {
@@ -90,28 +99,26 @@ def show(data):
         
         # Code NAF et secteur
         code_naf = entreprise['activitePrincipaleUniteLegale']
+        adresse_etab = adresse_siege
+        numero = adresse_etab['numeroVoieEtablissement'] if pd.notna(adresse_etab['numeroVoieEtablissement']) else ""
+        type_voie = adresse_etab['typeVoieEtablissement'] if pd.notna(adresse_etab['typeVoieEtablissement']) else ""
+        libelle = adresse_etab['libelleVoieEtablissement'] if pd.notna(adresse_etab['libelleVoieEtablissement']) else ""
         
-        naf_descriptions = {
-            '70.10Z': {
-                'titre': 'Activités des sièges sociaux',
-                'section': 'M - Activités spécialisées, scientifiques et techniques',
-                'division': '70 - Activités des sièges sociaux ; conseil de gestion',
-                'description': 'Cette activité comprend la supervision et la gestion d\'autres unités de la société ou de l\'entreprise, ainsi que la planification stratégique ou organisationnelle et le rôle décisionnel de la société ou de l\'entreprise.'
-            }
-        }
-        
-        naf_info = naf_descriptions.get(code_naf, {
-            'titre': f'Code NAF {code_naf}',
-            'section': 'Non renseigné',
-            'division': 'Non renseigné',
-            'description': 'Description non disponible'
-        })
-        
+        adresse_complete = f"{numero} {type_voie} {libelle}".strip()
+                
         st.markdown(f"""
         <div class="metric-card">
-        <h3 style="color: #2563eb; margin-top: 0;">Code NAF (APE)</h3>
-        <h2 style="color: #1e3a8a; margin: 10px 0;">{code_naf}</h2>
-        <p style="color: #64748b; font-size: 0.9em;">{naf_info['titre']}</p>
+         <strong>Code NAF:</strong><br>
+         {code_naf}<br>
+         <strong>Libellé NAF:</strong><br>
+         {get_libelle_naf(code_naf)}<br><br>
+        </div>
+
+        <strong>Adresse Siege Social:</strong><br>
+        {adresse_complete}<br>
+        {adresse_etab['codePostalEtablissement']} {adresse_etab['libelleCommuneEtablissement']}<br><br>
+        </div>
+
         </div>
         """, unsafe_allow_html=True)
         
