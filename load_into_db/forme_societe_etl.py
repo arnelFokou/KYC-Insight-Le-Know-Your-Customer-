@@ -9,7 +9,7 @@ def transformer_load_societe():
     df = pl.read_csv(str(path / "lake_files" / "forme_societes.csv"),encoding="latin1")
     df = df.rename({"Code":"code_societe","Libellé":"libelle"})
 
-    # Nettoyer les caractères nuls dans toutes les colonnes texte
+    # clean the data by removing null characters that can cause issues when inserting into the database
     df = df.with_columns(pl.col("libelle").str.replace_all("\x00", ""))
     df = df.with_columns(pl.col("code_societe").cast(pl.Utf8).str.replace_all("\x00", ""))
 

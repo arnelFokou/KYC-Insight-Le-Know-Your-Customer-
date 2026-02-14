@@ -41,40 +41,25 @@ def hist_etab():
 
     
     print("Étape 2 : Importation par batch dans la base de données...")
-    conn = psycopg2.connect(uri)
-    cur = conn.cursor()
     
     count = 0
     batch_size = 500_000  # Plus petit pour psycopg2
-    
-    for df_batch in lf_clean.collect(engine="streaming").iter_slices(n_rows=batch_size):
-        # Convertir en liste de tuples
-        records = df_batch.rows()
-        
-        try:
-            execute_values(
-                cur,
-                """
-                INSERT INTO historique_etablissements 
-                (siret, name, date_debut, date_fin, etat_administratif, activite_principale)
-                VALUES %s
-                """,
-                records,
-                page_size=1000
+
+    try:
+         
+        for df_batch in lf_clean.collect(engine="streaming").iter_slices(n_rows=batch_size):
+
+            df_batch.write_database(
+            table_name="historique_etablissements",
+            connection=uri,
+            if_table_exists="append",
+            engine="adbc"
             )
-            conn.commit()
+            count += df_batch.height
             
-            count += len(records)
-            print(f" Lignes importées : {count:,} ...", end="\r")
-            
-        except Exception as e:
+    except Exception as e:
             print(f"\n Erreur sur batch : {e}")
-            conn.rollback()
-            continue
-    
-    cur.close()
-    conn.close()
-    
+      
     print(f"\n Terminé ! {count:,} lignes importées avec succès.")  
 
 

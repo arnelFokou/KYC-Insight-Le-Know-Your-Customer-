@@ -4,8 +4,7 @@ import plotly.graph_objects as go
 import plotly.express as px
 from datetime import date, datetime
 
-from utils.get_libelle_naf import get_libelle_naf
-from utils.get_juridig_form import get_libelle
+
 
 def show(df):
     st.title("🏦 Analyse des Établissements - Vue Banquier")
@@ -15,34 +14,34 @@ def show(df):
     
     col1, col2 = st.columns([3, 1])
    
-    etab = df['uniteLegale']
-    adresse_etab = df['adresseEtablissement']
+    etab = df['ul_nom']
+    adresse_etab = df['etab_adress']
         
     # Indicateurs clés pour banquier
     
     col1, col2, col3, col4 = st.columns(4)
     
     with col1:
-        status_color = "🟢" if etab['etatAdministratifUniteLegale'] == 'A' else "🔴"
+        status_color = "🟢" if df['etab_etat_administratif'] == 'A' else "🔴"
         st.metric(
             label="Statut de l'établissement",
-            value='Actif' if etab['etatAdministratifUniteLegale'] == 'A' else 'Inactif',
+            value='Actif' if df['etab_etat_administratif'] == 'A' else 'Inactif',
             delta=status_color
         )
     
     with col2:
-        is_siege = "Oui ✓" if df["etablissementSiege"] else "Non"
+        is_siege = "Oui ✓" if df["etab_is_siege"] else "Non"
         st.metric(
             label="Siège social",
             value=is_siege
         )
     
     with col3:
-        anciennete = (datetime.now() - pd.to_datetime(df['dateCreationEtablissement'])).days // 365
+        anciennete = (datetime.now() - pd.to_datetime(df['etab_date_creation'])).days // 365
         st.metric(
             label="Ancienneté",
             value=f"{anciennete} ans",
-            delta=f"Créé le {datetime.strptime(df['dateCreationEtablissement'],"%Y-%m-%d").strftime('%Y/%m/%d')}"
+            delta=f"Créé le {datetime.strptime(df['etab_date_creation'],"%Y-%m-%d").strftime('%Y/%m/%d')}"
         )
     
     with col4:
@@ -65,7 +64,7 @@ def show(df):
         }
         st.metric(
             label="Tranche d'effectifs",
-            value=effectif_label.get(str(etab['trancheEffectifsUniteLegale']), 'Non renseigné')
+            value=effectif_label.get(str(df['etab_tranch_eff']), 'Non renseigné')
         )
     
     st.markdown("---")
@@ -77,64 +76,44 @@ def show(df):
         st.markdown("### 🏢 Identification Juridique")
         st.markdown(f"""
         <div class="info-box">
-        <strong>SIRET:</strong> {df['siret']}<br>
+        <strong>SIRET:</strong> {df['etab_siret']}<br>
         <strong>SIREN:</strong> {df['siren']}<br>
-        <strong>Dénomination:</strong> {etab['denominationUniteLegale']}<br>
-        <strong>Forme juridique:</strong> {etab['categorieJuridiqueUniteLegale']} ({get_libelle(etab['categorieJuridiqueUniteLegale'])})<br>
-        <strong>Statut:</strong> {'Actif' if etab['etatAdministratifUniteLegale'] else 'Inactive'}<br>
-        <strong>Type:</strong> {"Siège Social" if df['etablissementSiege'] else "Établissement Secondaire"}
+        <strong>Dénomination:</strong> {df['hist_name']}<br>
+        <strong>Forme juridique:</strong> {df['ul_code_juridique']} ({df['ul_libelle_juridique']})<br>
+        <strong>Statut:</strong> {'Actif' if df['ul_etat_administratif'] else 'Inactive'}<br>
+        <strong>Type:</strong> {"Siège Social" if df['etab_is_siege'] else "Établissement Secondaire"}
         </div>
         """, unsafe_allow_html=True)
         
         st.markdown("### 💼 Activité Économique")
         st.markdown(f"""
         <div class="info-box">
-        <strong>Code NAF:</strong> {get_libelle_naf(etab['activitePrincipaleUniteLegale'])}<br>
-        <strong>Secteur:</strong> {get_secteur_name(etab['activitePrincipaleUniteLegale'])}<br>
-        <strong>Catégorie d'entreprise:</strong> {etab['categorieEntreprise']}
+        <strong>Code NAF:</strong> {df['etab_activite_principale']}<br>
+        <strong>Secteur:</strong> {df['etab_libelle_activite']}<br>
+        <strong>Catégorie d'entreprise:</strong> {df['ul_libelle_categorie']}
         </div>
         """, unsafe_allow_html=True)
     
     with col2:
         st.markdown("### 📍 Localisation")
         
-        numero = adresse_etab['numeroVoieEtablissement'] if pd.notna(adresse_etab['numeroVoieEtablissement']) else ""
-        type_voie = adresse_etab['typeVoieEtablissement'] if pd.notna(adresse_etab['typeVoieEtablissement']) else ""
-        libelle = adresse_etab['libelleVoieEtablissement'] if pd.notna(adresse_etab['libelleVoieEtablissement']) else ""
-        
-        adresse_complete = f"{numero} {type_voie} {libelle}".strip()
-        if not adresse_complete:
-            adresse_complete = "Adresse non renseignée"
-        
+              
         st.markdown(f"""
         <div class="info-box">
         <strong>Adresse:</strong><br>
-        {adresse_complete}<br>
-        {adresse_etab['codePostalEtablissement']} {adresse_etab['libelleCommuneEtablissement']}<br><br>
+        {df['etab_adress']}<br>
         </div>
         """, unsafe_allow_html=True)
         
         st.markdown("### 📅 Dates Clés")
         st.markdown(f"""
         <div class="info-box">
-        <strong>Création établissement:</strong> {pd.to_datetime(df['dateCreationEtablissement']).strftime('%d/%m/%Y')}<br>
-        <strong>Dernière mise à jour:</strong> {pd.to_datetime(df['dateDernierTraitementEtablissement']).strftime('%d/%m/%Y')}<br>
-        <strong>Ancienneté:</strong> {(datetime.now() - pd.to_datetime(df['dateCreationEtablissement'])).days // 365} ans et {(datetime.now() - pd.to_datetime(df['dateCreationEtablissement'])).days % 365} jours
+        <strong>Création établissement:</strong> {pd.to_datetime(df['etab_date_creation']).strftime('%d/%m/%Y')}<br>
+        <strong>Ancienneté:</strong> {(datetime.now() - pd.to_datetime(df['etab_date_creation'])).days // 365} ans et {(datetime.now() - pd.to_datetime(df['etab_date_creation'])).days % 365} jours
         
         </div>
         """, unsafe_allow_html=True)
     
     st.markdown("---")
  
-def get_secteur_name(code_naf):
-    """Retourne le nom du secteur à partir du code NAF"""
-    secteurs = {
-        '70.10Z': 'Activités des sièges sociaux',
-        '72.19Z': 'Recherche-développement en autres sciences physiques et naturelles',
-        '55.20Z': 'Hébergement touristique et autre hébergement de courte durée',
-        '35.11Z': 'Production d\'électricité',
-        '73.1Z': 'Publicité',
-        '74.1J': 'Conseil pour les affaires et la gestion',
-        '11.1Z': 'Production de boissons alcooliques distillées'
-    }
-    return secteurs.get(code_naf, f'Secteur {code_naf}')
+

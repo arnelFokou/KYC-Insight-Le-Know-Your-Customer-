@@ -1,91 +1,82 @@
-import streamlit as st
 import pandas as pd
-import json
-import ast
-from utils.extraction import extract_data_siren
+import streamlit as st
+import requests
+import os
+from dotenv import load_dotenv
+from vues import page_etablissement, page_entreprise, page_evolution
 
-# 1. Configuration et Style
+load_dotenv('.env.secrets')
+API_URL = os.getenv('API_URL')
+siret = 0
+
+# 1. Configuration
 st.set_page_config(page_title="Banque-Check | Analyse SIRENE", layout="wide")
 
-# Petit CSS pour rendre l'accueil plus "Banque"
-st.markdown("""
-    <style>
-    .main { background-color: #f5f7f9; }
-    .stButton>button { width: 100%; background-color: #004a99; color: white; }
-    </style>
-    """, unsafe_allow_html=True)
+# Cache pour éviter de ralentir à chaque clic
+@st.cache_data(show_spinner=False)
+def fetch_siret_data(siret):
+    try:
+        response = requests.get(f"{API_URL}/{siret}", timeout=15)
+        if response.status_code == 200:
+            return response.json().get('data')
+        return None
+    except Exception as e:
+        return f"Erreur de connexion : {e}"
 
-# 2. Chargement des données
-def load_data():
-    with open("datafiles/data_siret.json","r") as f:
-        data = json.load(f)
-    return data
-
-def load_data_siren():
-    with open("datafiles/data_siren.json","r") as f:
-        global_data = json.load(f)
-    return global_data
-
-
-# --- INITIALISATION DE LA SESSION ---
-# On utilise st.session_state pour garder le SIRET en mémoire même si on change de page
+# --- INITIALISATION ---
 if 'siret_valide' not in st.session_state:
     st.session_state['siret_valide'] = False
 if 'data_client' not in st.session_state:
     st.session_state['data_client'] = None
 
-# --- VUE 1 : ACCUEIL & SAISIE (Si aucun SIRET n'est validé) ---
+# --- VUE 1 : ACCUEIL ---
 if not st.session_state['siret_valide']:
-    st.title("🏦 Bienvenue sur Banque-Check")
-    st.markdown("""
-    ### L'outil d'analyse KYC intelligent.
-    Veuillez saisir le **SIRET (14 chiffres)** de l'établissement que vous souhaitez auditer pour déverrouiller l'accès aux fiches détaillées.
-    """)
+    st.title("🏦 Bienvenue sur KYC Explorer")
     
     col1, col2, col3 = st.columns([1,2,1])
     with col2:
-        st.image("https://www.sirene.fr/static-resources/images/logo-sirene.png", width=150) # Exemple de logo
-        siret_input = st.text_input("Numéro SIRET :", max_chars=14, placeholder="Ex: 54205118000074")
+        st.image("https://www.sirene.fr/static-resources/images/logo-sirene.png", width=150)
+        siret_input = st.text_input("Numéro SIRET :", max_chars=14, placeholder="14 chiffres")
         
         if st.button("Analyser l'établissement"):
             if len(siret_input) == 14 and siret_input.isdigit():
-                # Recherche
-                res = extract_data_siren(siret_input)
-
-                if res == 1:
-                    data_loaded = load_data()
-                    st.session_state['siret_valide'] = True
-                    st.session_state['data_client'] = data_loaded
-                    st.rerun() # On relance pour afficher le dashboard
-                else:
-                    st.error("❌ Ce SIRET n'existe pas dans notre base de données! Veuillez verifier a nouveau.")
+                with st.spinner("Analyse en cours..."):
+                    result = fetch_siret_data(siret_input)
+                    
+                    if isinstance(result, list) and len(list(result)) > 0:
+                        st.session_state['data_client'] = result
+                        st.session_state['siret_valide'] = True
+                        st.success("C'est bon !")
+                        st.rerun()
+                    else:
+                        st.error(f"Erreur : {result if result else 'SIRET introuvable'}")
             else:
-                st.warning("⚠️ Veuillez saisir un SIRET valide de 14 chiffres.")
+                st.warning("⚠️ Le SIRET doit comporter exactement 14 chiffres.")
 
-# --- VUE 2 : DASHBOARD (Si un SIRET est validé) ---
+# --- VUE 2 : DASHBOARD ---
 else:
     data_siret = st.session_state['data_client']
+    # Premier élément = données actuelles
+    current = data_siret[0] 
+    # Sidebar
+    nom_entreprise = current['ul_nom']
+    st.sidebar.success(f"📍 Client : {nom_entreprise}")
     
-    # Barre latérale pour naviguer et bouton pour changer de client
-    st.sidebar.success(f"📍 Client : {data_siret['uniteLegale']['denominationUniteLegale']}")
     menu = st.sidebar.radio("Navigation", ["🏢 L'Établissement", "🌍 L'Entreprise", "📜 Historique"])
     
-    if st.sidebar.button("🔄 Analyser un autre SIRET"):
+    if st.sidebar.button("🔄 Changer de SIRET"):
         st.session_state['siret_valide'] = False
+        st.session_state['data_client'] = None
         st.rerun()
 
-    # Affichage des pages
+    # Affichage
     if menu == "🏢 L'Établissement":
-        from vues import page_etablissement
-        page_etablissement.show(data_siret)
-
+        data_etablissement_recent = [data for data in data_siret if data.get('hist_date_fin') is None]
+        page_etablissement.show(data_etablissement_recent[0])
         
     elif menu == "🌍 L'Entreprise":
-        from vues import page_entreprise
-        siren_data = load_data_siren()
-        page_entreprise.show(siren_data)
+        page_entreprise.show(data_siret)
         
     elif menu == "📜 Historique":
         st.title("Évolution de l'établissement")
-        from vues import page_evolution
-        page_evolution.evolution(data_siret['periodesEtablissement'])
+        page_evolution.evolution(data_siret)

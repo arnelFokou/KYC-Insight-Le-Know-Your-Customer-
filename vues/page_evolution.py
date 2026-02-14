@@ -1,5 +1,4 @@
 import streamlit as st
-from utils.get_libelle_naf import get_libelle_naf
 
 def evolution(historique_list):
     """
@@ -54,16 +53,18 @@ def evolution(historique_list):
     # Inversion pour avoir le plus récent en haut (comme l'image qui monte vers le futur)
     for event in historique_list:
         # Extraction dynamique des données
-        date_fin = event.get('dateFin') if event.get('dateFin') else "Aujourd'hui"
-        date_debut = event.get('dateDebut')
-        annee = event.get('dateDebut', '????')[:4] if event.get('dateDebut') else "Inconnue"
-        nom = event.get('enseigne1Etablissement') or "Enseigne non définie"
-        activite = event.get('activitePrincipaleEtablissement') or "NAF non défini"
-        employeurs = event.get('caractereEmployeurEtablissement', 'N/A')
+        date_fin = event.get('hist_date_fin') if event.get('hist_date_fin') else "Aujourd'hui"
+        date_debut = event.get('hist_date_debut')
+        annee = event.get('hist_date_debut', '????')[:4] if event.get('hist_date_debut') else "Inconnue"
+        nom = event.get('hist_name') 
+        code_activite = event.get('hist_activite') or "NAF non défini"
+        libelle_activite = event.get('hist_libelle') 
+
+        # employeurs = event.get('caractereEmployeurEtablissement', 'N/A')
         
         # Logique d'affichage de l'acteur (dynamique selon les données)
-        # Ici on peut varier selon si c'est un employeur ou non par exemple
-        acteur = "Siège" if event.get('caractereEmployeurEtablissement') == 'O' else "Établissement"
+        # Ici on peut varier selon si c'est un employeur ou non par  exemple
+        acteur = "Établissement"
 
         # Génération du HTML pour chaque ligne
         html_row = f"""
@@ -73,9 +74,9 @@ def evolution(historique_list):
             <div class="content-bubble">
                 <div class="title">{nom}</div>
                 <div class="subtitle"> {date_debut} - {date_fin} </div>
-                <p style="margin: 5px 0 0 0; color: black;">Code NAF : {activite}({event['nomenclatureActivitePrincipaleEtablissement']}), {get_libelle_naf(activite) if get_libelle_naf(activite) else ''}</p>
-                <p style="margin: 5px 0 0 0; color: black;">Employees dans l'etablissement : {'yes' if employeurs=='O' else 'No'}</p>
+                <p style="margin: 5px 0 0 0; color: black;">Code NAF : {code_activite}, {libelle_activite}</p>
             </div>
         """
+
         st.markdown(html_row, unsafe_allow_html=True)
 
