@@ -6,6 +6,19 @@ Project for exploring and enriching SIRENE data for KYC (Know Your Customer) use
 
 This repository contains ETL tools, a FastAPI service to expose processed data, and a Streamlit UI to query a SIRET and visualize company/site information.
 
+## Tech Stack & Architecture Choice
+Why these technologies? Each choice addresses a Big Data constraint:
+
+Polars (ETL engine): chosen for its speed compared to Pandas. It supports streaming and multi-threaded execution, which is critical when processing millions of establishments in the INSEE dataset.
+
+Apache Arrow ADBC (DB ingestion): we use the ADBC engine for bulk inserts. Unlike classic drivers, ADBC enables zero-copy transfers, giving up to 10x faster ingestion into PostgreSQL.
+
+PostgreSQL & Materialized Views: storage is optimized using materialized views (mv_etablissements) to keep API response times under 20ms, even with complex joins.
+
+FastAPI (backend): selected for async performance and automatic documentation (Swagger). The API supports secure batch CSV enrichment (SQL injection protection via ANY(:sirets)).
+
+Streamlit (frontend): data-visualization UI that supports single SIRET lookup or batch file upload.
+
 ## Database schema
 
 ![Database schema](model.png)

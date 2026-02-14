@@ -49,7 +49,7 @@ if not st.session_state['siret_valide']:
     
     col1, col2, col3 = st.columns([1,2,1])
     with col2:
-        st.image("https://www.sirene.fr/static-resources/images/logo-sirene.png", width=150)
+        st.image("https://static.data.gouv.fr/images/4c/10197b12354d239227d804ac9277dd.png", width=150)
         siret_input = st.text_input("Numéro SIRET :", max_chars=14, placeholder="14 chiffres")
 
         action_col, upload_col = st.columns([1, 1])
