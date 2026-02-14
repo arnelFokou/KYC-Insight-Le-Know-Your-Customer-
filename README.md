@@ -1,162 +1,190 @@
-# KYC-Insight — Le Know-Your-Customer
+# KYC-Insight — Know Your Customer
 
-Projet d'exploration et d'enrichissement des données SIRENE pour des cas d'usage KYC (Know Your Customer).
+Project for exploring and enriching SIRENE data for KYC (Know Your Customer) use cases.
 
 ## Description
 
-Ce dépôt contient un ensemble d'outils ETL, une API FastAPI pour exposer les données traitées et une interface utilisateur Streamlit pour interroger un SIRET et visualiser les informations d'entreprise/établissement.
+This repository contains ETL tools, a FastAPI service to expose processed data, and a Streamlit UI to query a SIRET and visualize company/site information.
 
-## Arborescence (résumé)
+## Database schema
 
-- `accueil.py` : application Streamlit principale (frontend).
-- `requirements.txt` : dépendances Python.
-- `api/main.py` : API FastAPI exposant les données (endpoint GET /{siret}).
-- `load_into_db/` : scripts ETL pour charger et transformer les données SIRENE dans la base.
-- `lake_files/` : fichiers sources / CSV fournis pour l'ingestion (ex : `forme_societes.csv`).
-- `utils/` : utilitaires (ex : `get_db_url.py`, scripts SQL `initdb.sql`, etc.).
-- `vues/` : composants de l'interface Streamlit (pages de rendu).
+![Database schema](model.png)
 
-## Prérequis
+## Repository layout (summary)
 
-- Python 3.10+ (ou 3.11)
-- PostgreSQL (base de données cible pour les données transformées)
-- `git` (optionnel)
+- `accueil.py`: main Streamlit app (frontend).
+- `requirements.txt`: Python dependencies.
+- `api/main.py`: FastAPI service (GET /{siret} endpoint).
+- `load_into_db/`: ETL scripts to transform and load SIRENE data into postgres tables.
+- `lake_files/`: source files / CSV and parquet inputs (e.g., `forme_societes.csv`, `StockEtablisement_utf8.parquet`).
+- `utils/`: utilities (e.g., `get_db_url.py`, SQL scripts `initdb.sql`, etc.).
+- `vues/`: Streamlit UI components (page renderers).
 
-Les dépendances Python sont listées dans `requirements.txt`.
+## Prerequisites
+
+- Python 3.10+ (or 3.11)
+- PostgreSQL (target database)
+- `git` (optional)
+
+Python dependencies are listed in `requirements.txt`.
 
 ## Installation (local, Windows PowerShell)
 
-1. Cloner le dépôt :
+1. Clone the repository:
 
 ```powershell
-git clone <url-du-repo>
+git clone <repo-url>
 cd <repo>
 ```
 
-2. Créer un environnement virtuel et l'activer :
+2. Create and activate a virtual environment:
 
-```powershell
+```bash
 python -m venv .venv
-.\.venv\Scripts\Activate.ps1
+source .venv\bin\activate
 ```
 
-3. Installer les dépendances :
+3. Install dependencies:
 
-```powershell
+```bash
 pip install -r requirements.txt
 ```
 
-## Configuration des variables d'environnement
+## Environment variables
 
-Le projet charge par défaut un fichier `..\.env.secrets` (voir `utils/get_db_url.py` et `api/main.py`). Créez un fichier `.env.secrets` à la racine du repo (ou adaptez le chemin) contenant au minimum :
+Create a `.env.secrets`  file at the repo root (or adjust the path) with at least:
 
 ```
-DB_USER=mon_user
-DB_PASS=mon_password
+DB_USER=my_user
+DB_PASS=my_password
 DB_HOST=localhost
 DB_PORT=5432
-DB_NAME=ma_base
+DB_NAME=my_database
 API_URL=http://localhost:8000
 ```
 
-- `DB_*` : utilisé par les scripts ETL et l'API pour se connecter à PostgreSQL.
-- `API_URL` : utilisé par l'interface Streamlit (`accueil.py`) pour contacter l'API (ex : `http://localhost:8000`).
+- `DB_*`: used by ETL scripts and the API to connect to PostgreSQL.
+- `API_URL`: used by the Streamlit app (`accueil.py`) to call the API (e.g., `http://localhost:8000`).
 
-REMARQUE : `utils/get_db_url.py` construit l'URI PostgreSQL à partir des variables ci-dessus.
+NOTE: `utils/get_db_url.py` builds the PostgreSQL URI from the variables above.
 
-## Initialiser la base de données
+## Initialize the database
 
-1. Connexion à PostgreSQL (exemple psql) :
+1. Connect to PostgreSQL (example with psql):
 
-```powershell
-# exemple
+```bash
+# example
 psql -h localhost -U postgres
 ```
 
-2. Exécuter les scripts SQL fournis (ex : `utils/initdb.sql`, `utils/extra_db.sql`) pour créer schémas et tables nécessaires :
+2. Run the table creation script: you can do it as user postgres or you can create your own user and then make sure  you use that user in .env.secrets
 
-```powershell
+```bash
 psql -h $DB_HOST -U $DB_USER -d $DB_NAME -f utils/initdb.sql
 ```
 
-Adaptez le chemin et les fichiers selon vos besoins.
+Adjust paths and files as needed.
 
-## Charger les données (ETL)
+## Load data (ETL)
 
-Les scripts d'ingestion et de transformation sont dans `load_into_db/` :
+ETL scripts live in `load_into_db/`:
 
-- `unite_legale_etl.py`
-- `etablissements_etl.py`
+
 - `naf_etl.py`
 - `forme_societe_etl.py`
 - `cat_entreprise_etl.py`
+- `unite_legale_etl.py`
+- `etablissements_etl.py`
 - `hist_etab_etl.py`
 
-Exemple pour lancer un script ETL :
+Example for running an ETL script:
 
-```powershell
+```bash
 python load_into_db/unite_legale_etl.py
 ```
 
-Les scripts attendent que les fichiers sources soient disponibles dans `lake_files/`. Vérifiez les noms de fichiers attendus et adaptez les scripts si nécessaire.
+Scripts expect the source files to be available in `lake_files/`. Check the expected file names and adjust the scripts if needed.
 
-## Lancer l'API
+## Full procedure (validated order)
 
-L'API FastAPI se trouve dans `api/main.py`. Pour la lancer en développement (rechargement automatique) :
+The order below matches a clean installation that works with the current pipeline.
 
-```powershell
+1. Create the PostgreSQL database.
+2. Run `utils/initdb.sql` (table creation).
+3. Run ETL scripts in this order:
+   - `load_into_db/naf_etl.py`
+   - `load_into_db/cat_entreprise_etl.py`
+   - `load_into_db/forme_societe_etl.py`
+   - `load_into_db/unite_legale_etl.py`
+4. Before `etablissements_etl.py`, run:
+   - `utils/extra_db.sql` (add missing NAF codes)
+5. Run:
+   - `load_into_db/etablissements_etl.py`
+   - `load_into_db/hist_etab_etl.py`
+6. Run `utils/mv.sql` to create materialized views (including the view used by the API).
+7. Start the API:
+
+```bash
 python -m uvicorn api.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-Endpoint principal :
+8. Start Streamlit:
 
-- `GET /{siret}` : retourne les données liées au SIRET demandé (ex : `http://localhost:8000/12345678901234`).
-
-## Lancer l'interface Streamlit
-
-L'interface utilisateur est `accueil.py` (utilise `vues/` pour les pages). Assurez-vous d'avoir `API_URL` correctement configurée dans `.env.secrets` (ex : `http://localhost:8000`). Puis :
-
-```powershell
+```bash
 streamlit run accueil.py
 ```
 
-La page Streamlit propose un champ SIRET (14 chiffres) et affiche les informations renvoyées par l'API.
+## Run the API
 
-## Tests & validations rapides
+The FastAPI service is in `api/main.py`. For development (auto reload):
 
-- Vérifiez la connexion DB : lancez un petit script Python qui importe `utils/get_db_url.py` et tente une connexion via `psycopg2`.
-- Testez l'API avec `curl` ou Postman :
+```bash
+python -m uvicorn api.main:app --reload --host 0.0.0.0 --port 8000
+```
 
-```powershell
+Main endpoint:
+
+- `GET /{siret}`: returns data for the requested SIRET (e.g., `http://localhost:8000/12345678901234`).
+
+## Run the Streamlit UI
+
+The UI is `accueil.py` (uses `vues/` for pages). Make sure `API_URL` is set in `.env.secrets` (e.g., `http://localhost:8000`). Then:
+
+```bash
+streamlit run accueil.py
+```
+
+The app provides a SIRET input (14 digits) and displays the data returned by the API.
+
+## Quick tests
+
+- Check DB connectivity: run a small Python script that imports `utils/get_db_url.py` and attempts a `psycopg2` connection.
+- Test the API with `curl` or Postman:
+
+```bash
 curl http://localhost:8000/12345678901234
 ```
 
-## Débogage et erreurs courantes
+## Troubleshooting
 
-- Erreur de connexion DB : vérifiez `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASS`, `DB_NAME` dans `.env.secrets`.
-- Données manquantes : assurez-vous que les scripts ETL ont été exécutés et que les tables attendues existent.
-- Timeout API depuis Streamlit : vérifiez que `API_URL` pointe vers l'instance uvicorn en cours.
+- DB connection error: verify `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASS`, `DB_NAME` in `.env.secrets`.
+- Missing data: make sure ETL scripts ran and expected tables exist.
+- API timeout from Streamlit: ensure `API_URL` points to the running uvicorn instance.
 
-## Dépendances principales
+## Main dependencies
 
-Voir `requirements.txt`. Les dépendances importantes : `fastapi`, `uvicorn`, `psycopg2-binary`, `python-dotenv`, `streamlit`, `polars`, `pandas`.
+See `requirements.txt`. Key dependencies: `fastapi`, `uvicorn`, `psycopg2-binary`, `python-dotenv`, `streamlit`, `polars`, `pandas`.
 
-## Contribution
+## Contributing
 
-1. Fork puis créez une branche descriptive : `git checkout -b feat/ma-fonctionnalite`
-2. Ajouter/tester votre code
-3. Ouvrir une pull request avec description claire
+1. Fork and create a feature branch: `git checkout -b feat/my-feature`
+2. Add/test your code
+3. Open a pull request with a clear description
 
-## À améliorer / idées
 
-- Ajout d'un Docker Compose pour lancer PostgreSQL + API + Streamlit facilement.
-- Scripts de tests automatisés / CI pour valider ETL et API.
-- Surveillance et logging centralisé pour les jobs ETL.
 
-## Auteur & contact
+## Author
 
-Projet fourni par l'équipe interne. Pour des questions : ouvrir une issue dans le dépôt.
+Arnel Fokou
 
-## Licence
 
-Ajouter une licence (ex : MIT) selon la politique de votre organisation.

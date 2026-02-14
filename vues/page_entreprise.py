@@ -6,9 +6,9 @@ from datetime import datetime
 
 def show(uls):
     ul_siege = [ul for ul in uls if ul['etab_is_siege']]
-    adresse_siege = ul_siege[0]['etab_adress'] if ul_siege else None
+    
 
-    st.title(f"🏢 {ul_siege[0]['ul_nom'] if ul_siege else 'Entreprise inconnue'}")
+    st.title(f"🏢 {uls[0]['ul_nom']}")
     st.markdown("### *Vue d'ensemble *")
     st.markdown("---")
     
@@ -20,11 +20,11 @@ def show(uls):
     with col1:
         st.metric(
             label="📋 Nbre D'etablisements",
-            value=len(uls[0])
+            value=uls[0]['nb_etab']
         )
     
     with col2:
-        creation_date = ul_siege[0]['ul_date_creation']
+        creation_date = uls[0]['ul_date_creation']
         age = (datetime.now() - pd.to_datetime(creation_date)).days // 365
         st.metric(
             label="📅 Ancienneté",
@@ -42,8 +42,8 @@ def show(uls):
     with col4:
         st.metric(
             label="🏛️ Statut",
-            value= "Active" if ul_siege[0]['ul_etat_administratif']=='A' else "Inactive",
-            delta="A" if ul_siege[0]['ul_etat_administratif'] == 'A' else "I"
+            value= "Active" if uls[0]['ul_etat_administratif']=='A' else "Inactive",
+            delta="A" if uls[0]['ul_etat_administratif'] == 'A' else "I"
         )
     
     st.markdown("---")
@@ -57,16 +57,16 @@ def show(uls):
         
 
         
-        forme_juridique = f"Code {ul_siege[0]['ul_code_juridique']}"
+        forme_juridique = f"Code {uls[0]['ul_code_juridique']}"
   
         
         st.markdown(f"""
         <div class="info-box">
         <strong>Forme juridique:</strong> {forme_juridique}<br>
-        <strong>Code juridique:</strong> {ul_siege[0]['ul_code_juridique']}<br>
-        <strong>SIREN:</strong> {ul_siege[0]['siren']}<br>
-        <strong>État administratif:</strong> {"Actif" if ul_siege[0]['ul_etat_administratif'] == 'A' else "Inactif"}<br>
-        <strong>Date de création:</strong> {pd.to_datetime(ul_siege[0]['ul_date_creation']).strftime('%d/%m/%Y')}
+        <strong>Code juridique:</strong> {uls[0]['ul_code_juridique']}<br>
+        <strong>SIREN:</strong> {uls[0]['siren']}<br>
+        <strong>État administratif:</strong> {"Actif" if uls[0]['ul_etat_administratif'] == 'A' else "Inactif"}<br>
+        <strong>Date de création:</strong> {pd.to_datetime(uls[0]['ul_date_creation']).strftime('%d/%m/%Y')}
         </div>
         """, unsafe_allow_html=True)
                
@@ -75,7 +75,7 @@ def show(uls):
         st.markdown("## 💼 Activité Économique")
         
         # Code NAF et secteur
-        code_naf = ul_siege[0]['ul_activite_principale']
+        code_naf = uls[0]['ul_activite_principale']
 
                 
         st.markdown(f"""
@@ -83,17 +83,17 @@ def show(uls):
          <strong>Code NAF:</strong><br>
          {code_naf}<br>
          <strong>Libellé NAF:</strong><br>
-         {ul_siege[0]['ul_libelle_activite']}<br><br>
+         {uls[0]['ul_libelle_activite']}<br><br>
         </div>
 
-        <strong>Adresse Siege Social:</strong><br>
-        {ul_siege[0]['etab_adress']}<br><br>
-        </div>
+      
 
         </div>
         """, unsafe_allow_html=True)
         
-      
+        # <strong>Adresse Siege Social:</strong><br>
+        # {ul_siege[0]['etab_adress'] if ul_siege else 'Adresse non disponible'}<br><br>
+        # </div>
        
  
     

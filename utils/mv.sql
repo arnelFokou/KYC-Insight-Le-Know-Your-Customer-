@@ -42,7 +42,8 @@ FROM historique_etablissements h
 LEFT JOIN ref_codes_naf n ON h.activite_principale = n.code_naf;
 
 CREATE MATERIALIZED VIEW final_table AS 
-SELECT * 
+SELECT *,
+count(etab_siret) over(partition by etab_siren) as nb_etab
 FROM   mv_hist_etablissement h
 LEFT JOIN mv_etablissements e on e.etab_siret = h.hist_siret
-LEFT JOIN mv_ul u on  u.siren = e.etab_siren
+LEFT JOIN mv_ul u on  u.siren = e.etab_siren;

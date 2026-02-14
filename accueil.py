@@ -23,6 +23,20 @@ def fetch_siret_data(siret):
     except Exception as e:
         return f"Erreur de connexion : {e}"
 
+def extract_activity_from_csv(uploaded_file):
+    try:
+        files = {
+            "file": (uploaded_file.name, uploaded_file.getvalue(), "text/csv")
+        }
+        response = requests.post(f"{API_URL}/extract_activity", files=files, timeout=60)
+        if response.status_code == 200:
+            return response.json()
+        return {
+            "error": f"Erreur API ({response.status_code}) : {response.text}"
+        }
+    except Exception as e:
+        return {"error": f"Erreur de connexion : {e}"}
+
 # --- INITIALISATION ---
 if 'siret_valide' not in st.session_state:
     st.session_state['siret_valide'] = False
@@ -37,21 +51,51 @@ if not st.session_state['siret_valide']:
     with col2:
         st.image("https://www.sirene.fr/static-resources/images/logo-sirene.png", width=150)
         siret_input = st.text_input("Numéro SIRET :", max_chars=14, placeholder="14 chiffres")
-        
-        if st.button("Analyser l'établissement"):
-            if len(siret_input) == 14 and siret_input.isdigit():
-                with st.spinner("Analyse en cours..."):
-                    result = fetch_siret_data(siret_input)
-                    
-                    if isinstance(result, list) and len(list(result)) > 0:
-                        st.session_state['data_client'] = result
-                        st.session_state['siret_valide'] = True
-                        st.success("C'est bon !")
-                        st.rerun()
-                    else:
-                        st.error(f"Erreur : {result if result else 'SIRET introuvable'}")
+
+        action_col, upload_col = st.columns([1, 1])
+        with action_col:
+            if st.button("Analyser l'établissement"):
+                if len(siret_input) == 14 and siret_input.isdigit():
+                    with st.spinner("Analyse en cours..."):
+                        result = fetch_siret_data(siret_input)
+
+                        if isinstance(result, list) and len(list(result)) > 0:
+                            st.session_state['data_client'] = result
+                            st.session_state['siret_valide'] = True
+                            st.success("C'est bon !")
+                            st.rerun()
+                        else:
+                            st.error(f"Erreur : {result if result else 'SIRET introuvable'}")
+                else:
+                    st.warning("⚠️ Le SIRET doit comporter exactement 14 chiffres.")
+
+        with upload_col:
+            uploaded_file = st.file_uploader(
+                "Charger un CSV",
+                type=["csv"],
+                help="Le fichier doit contenir une colonne etab_siret"
+            )
+
+        if uploaded_file is not None:
+            with st.spinner("Traitement du fichier..."):
+                result = extract_activity_from_csv(uploaded_file)
+
+            if isinstance(result, list) and len(result) > 0:
+                df_result = pd.DataFrame(result)
+                csv_bytes = df_result.to_csv(index=False).encode("utf-8")
+                st.success("Fichier traite. Vous pouvez le telecharger.")
+                st.download_button(
+                    "Telecharger le CSV enrichi",
+                    data=csv_bytes,
+                    file_name="sirets_naf.csv",
+                    mime="text/csv"
+                )
+                st.dataframe(df_result.head(20), use_container_width=True)
             else:
-                st.warning("⚠️ Le SIRET doit comporter exactement 14 chiffres.")
+                error_msg = "Aucune donnee retournee."
+                if isinstance(result, dict) and result.get("error"):
+                    error_msg = result["error"]
+                st.error(error_msg)
 
 # --- VUE 2 : DASHBOARD ---
 else:
