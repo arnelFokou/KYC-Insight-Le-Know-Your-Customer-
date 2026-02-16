@@ -8,7 +8,8 @@ SELECT
 	e.tranche_effectifs as etab_tranch_eff,
 	e.etat_administratif as etab_etat_administratif,
     e.activite_principale as etab_activite_principale,
-    n.libelle as etab_libelle_activite
+    n.libelle as etab_libelle_activite,
+	count(e.siret) over(partition by e.siren) as nb_etab	
 FROM etablissements e
 LEFT JOIN ref_codes_naf n ON e.activite_principale = n.code_naf;
 
@@ -22,8 +23,7 @@ SELECT
 	date_creation as ul_date_creation,
 	categorie_juridique as ul_code_juridique,
 	f.libelle as ul_libelle_juridique,
-	r.libelle as ul_libelle_categorie
-	
+	r.libelle as ul_libelle_categorie	
 FROM unites_legales u
 LEFT JOIN ref_codes_naf n ON u.activite_principale = n.code_naf
 LEFT JOIN forme_societes f ON f.code_societe = u.categorie_juridique
@@ -42,8 +42,7 @@ FROM historique_etablissements h
 LEFT JOIN ref_codes_naf n ON h.activite_principale = n.code_naf;
 
 CREATE MATERIALIZED VIEW final_table AS 
-SELECT *,
-count(etab_siret) over(partition by etab_siren) as nb_etab
+SELECT *
 FROM   mv_hist_etablissement h
 LEFT JOIN mv_etablissements e on e.etab_siret = h.hist_siret
 LEFT JOIN mv_ul u on  u.siren = e.etab_siren;
